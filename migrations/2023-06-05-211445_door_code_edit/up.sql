@@ -1,0 +1,1 @@
+ALTER TABLE door_code ADD COLUMN used boolean not null default false;

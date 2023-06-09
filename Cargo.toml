@@ -17,7 +17,8 @@ async-session = "3.0.0"
 axum = { version = "0.6.18", features = ["headers", "ws"] }
 axum-extra = { version = "0.7.4" }
 dotenv = "0.15.0"
-diesel = { version = "2.1.0", features = ["postgres"] }
+diesel = { version = "2.1.0", features = ["postgres", "chrono"] }
 diesel_migrations = "2.1.0"
 futures = "0.3.28"
 futures-util = { version = "0.3.28", features = ["sink", "std"] }
+serde_json = "1.0.96"

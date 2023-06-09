@@ -1,0 +1,1 @@
+ALTER TABLE door_code DROP COLUMN used;
