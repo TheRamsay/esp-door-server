@@ -14,6 +14,6 @@ RUN rm ./target/release/deps/auth-server*
 RUN cargo build --release
 
 FROM debian:buster-slim
-COPY --from=build /auth-server/target/release/holy .
+COPY --from=build /auth-server/target/release/auth-server .
 
 CMD ["./auth-server"]

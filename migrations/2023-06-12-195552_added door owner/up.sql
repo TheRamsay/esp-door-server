@@ -1,0 +1,1 @@
+ALTER TABLE door ADD COLUMN owner_id INT REFERENCES user_profile;

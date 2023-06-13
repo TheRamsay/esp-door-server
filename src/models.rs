@@ -36,6 +36,7 @@ pub struct UserProfile {
 pub struct Door {
     pub id: i32,
     pub about: Option<String>,
+    pub owner_id: Option<i32>,
 }
 
 #[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]

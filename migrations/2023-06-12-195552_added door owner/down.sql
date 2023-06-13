@@ -1,0 +1,1 @@
+ALTER TABLE door DROP COLUMN owner_id;

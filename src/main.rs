@@ -16,7 +16,11 @@ use diesel::{associations::HasTable, prelude::*};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenv::dotenv;
 use futures::{sink::SinkExt, stream::StreamExt};
-use http::{header, request::Parts};
+use http::{
+    header::{self, CONTENT_TYPE},
+    request::Parts,
+    HeaderValue,
+};
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
     ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
@@ -24,7 +28,8 @@ use oauth2::{
 use routes::auth::AuthRedirect;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::HashMap, env, net::SocketAddr};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tracing_subscriber::{fmt::layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     db::establish_connection,
@@ -39,9 +44,6 @@ mod db;
 mod models;
 mod routes;
 mod schema;
-
-use crate::models::*;
-use crate::schema::*;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 static COOKIE_NAME: &str = "SESSION";
@@ -64,6 +66,11 @@ async fn main() {
         oauth_client,
     };
 
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+        .allow_headers([CONTENT_TYPE])
+        .allow_credentials(true);
+
     let app = Router::new().nest(
         "/api/v1",
         Router::new()
@@ -71,7 +78,8 @@ async fn main() {
             .nest("/doors", routes::door::create_router(app_state.clone()))
             .nest("/users", routes::user::create_router(app_state.clone()))
             .nest("/auth", routes::auth::create_router(app_state.clone()))
-            .nest("/ws", routes::websocket::create_router(app_state.clone())),
+            .nest("/ws", routes::websocket::create_router(app_state.clone()))
+            .layer(cors),
     );
 
     axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())
