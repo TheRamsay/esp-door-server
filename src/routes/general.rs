@@ -11,7 +11,7 @@ use oauth2::basic::BasicClient;
 
 // use crate::{models::UserProfile, COOKIE_NAME};
 
-use crate::{models::UserProfile, COOKIE_NAME, AppState};
+use crate::{models::UserProfile, AppState, COOKIE_NAME};
 
 use super::auth::AuthRedirect;
 
@@ -44,7 +44,7 @@ async fn logout(
         None => return Redirect::to("/"),
     };
 
-    store.destroy_session(session).await.unwrap();
+    // store.destroy_session(session).await.unwrap();
 
     Redirect::to("/")
 }

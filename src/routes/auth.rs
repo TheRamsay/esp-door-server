@@ -1,9 +1,9 @@
 use async_session::{async_trait, MemoryStore, Session, SessionStore};
 use axum::{
-    routing::get,
     extract::{rejection::TypedHeaderRejectionReason, FromRef, FromRequestParts, Query, State},
     headers::Cookie,
     response::{IntoResponse, Redirect, Response},
+    routing::get,
     RequestPartsExt, Router, TypedHeader,
 };
 use http::{
@@ -20,9 +20,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     models::UserProfile,
     schema::{door, door_code, door_permission, user_profile},
-    COOKIE_NAME, AppState,
+    AppState, COOKIE_NAME,
 };
-
 
 pub fn create_router(app_state: AppState) -> Router {
     Router::new()
@@ -82,14 +81,17 @@ async fn login_authorized(
     // Store session and get corresponding cookie
     let cookie = store.store_session(session).await.unwrap().unwrap();
 
+    println!("USER_DATA {:?}", user_data);
+
     // Build the cookie
-    let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
+    let cookie = format!("{}={}; SameSite=None; Path=/", COOKIE_NAME, cookie);
 
     // Set cookie
     let mut headers = HeaderMap::new();
     headers.insert(SET_COOKIE, cookie.parse().unwrap());
 
-    (headers, Redirect::to("/"))
+    (headers, Redirect::to("http://localhost:5173/"))
+    // (headers, Redirect::to("/"))
 }
 
 // The user data we'll get back from Discord.

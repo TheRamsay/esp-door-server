@@ -4,6 +4,7 @@ diesel::table! {
     door (id) {
         id -> Int4,
         about -> Nullable<Varchar>,
+        owner_id -> Nullable<Int4>,
     }
 }
 
@@ -37,6 +38,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(door -> user_profile (owner_id));
 diesel::joinable!(door_code -> door (door_id));
 diesel::joinable!(door_code -> user_profile (creator_id));
 diesel::joinable!(door_permission -> door (door_id));
