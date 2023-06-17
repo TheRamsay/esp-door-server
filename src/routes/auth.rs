@@ -91,6 +91,7 @@ async fn login_authorized(
     headers.insert(SET_COOKIE, cookie.parse().unwrap());
 
     (headers, Redirect::to("http://localhost:5173/"))
+    // (headers, Redirect::to("/"))
 }
 
 // The user data we'll get back from Discord.

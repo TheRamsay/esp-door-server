@@ -10,7 +10,6 @@ RUN cargo build --release
 RUN rm src/*.rs
 COPY ./src ./src
 
-RUN rm ./target/release/deps/auth-server*
 RUN cargo build --release
 
 FROM debian:buster-slim
