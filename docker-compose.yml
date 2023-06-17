@@ -1,5 +1,6 @@
 services:
   server:
+    build: .
     image: esp-door-server
     ports:
-      - 3000:3000
+      - "3000:3000"
