@@ -1,6 +1,6 @@
 services:
   server:
-    build: .
-    image: esp-door-server
+    build:
+      context: .
     ports:
       - "3000:3000"
