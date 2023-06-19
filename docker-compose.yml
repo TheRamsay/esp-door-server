@@ -2,6 +2,8 @@ services:
   server:
     build: .
     image: esp-door-server
+    env_file:
+      - .env
 
 networks:
   default:
