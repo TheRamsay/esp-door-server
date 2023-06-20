@@ -90,8 +90,7 @@ async fn login_authorized(
     let mut headers = HeaderMap::new();
     headers.insert(SET_COOKIE, cookie.parse().unwrap());
 
-    (headers, Redirect::to("http://localhost:5173/"))
-    // (headers, Redirect::to("/"))
+    (headers, Redirect::to("/"))
 }
 
 // The user data we'll get back from Discord.
