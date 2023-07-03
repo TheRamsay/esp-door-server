@@ -41,10 +41,10 @@ async fn logout(
     let session = match store.load_session(cookie.to_string()).await.unwrap() {
         Some(s) => s,
         // No session active, just redirect
-        None => return Redirect::to("/"),
+        None => return Redirect::to("http://localhost:5173/"),
     };
 
-    // store.destroy_session(session).await.unwrap();
+    store.destroy_session(session).await.unwrap();
 
-    Redirect::to("/")
+    Redirect::to("http://localhost:5173/")
 }

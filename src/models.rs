@@ -27,11 +27,12 @@ pub struct UserProfile {
     pub id: i32,
     pub discord_id: String,
     pub username: String,
-    pub avatar_url: Option<String>,
+    pub avatar: Option<String>,
 }
 
 #[derive(Queryable, Selectable, Serialize, Deserialize, Insertable, Clone)]
 #[diesel(table_name = door)]
+#[diesel(belongs_to(DoorPermission))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Door {
     pub id: i32,
