@@ -24,6 +24,7 @@ pub fn create_router(app_state: AppState) -> Router {
         .route("/", post(create_door))
         .route("/:id", get(get_door))
         .route("/:id/open", get(open_door))
+        .route("/:id/permissions", get(get_door_permission))
         .with_state(app_state)
 }
 
@@ -37,6 +38,25 @@ async fn get_door(Path(door_id): Path<i32>) -> impl IntoResponse {
 
     if let Ok(door) = door {
         Ok((StatusCode::OK, Json(door)))
+    } else {
+        let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
+        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    }
+}
+
+async fn get_door_permission(Path(door_id): Path<i32>) -> impl IntoResponse {
+    let conn = &mut establish_connection();
+
+    let door = door::table
+        .find(door_id)
+        .select(Door::as_select())
+        .get_result(conn);
+
+    if let Ok(door) = door {
+        let permissions = DoorPermission::belonging_to(&door)
+            .inner_join(user_profile::table)
+            .select(DoorPermission::as_select())
+            .load(conn);
     } else {
         let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
         Err((StatusCode::NOT_FOUND, Json(error_response)))

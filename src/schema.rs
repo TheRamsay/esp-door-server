@@ -34,7 +34,7 @@ diesel::table! {
         id -> Int4,
         discord_id -> Varchar,
         username -> Varchar,
-        avatar_url -> Nullable<Varchar>,
+        avatar -> Nullable<Varchar>,
     }
 }
 

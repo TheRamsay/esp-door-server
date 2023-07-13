@@ -58,8 +58,8 @@ async fn get_user(Path(user_id): Path<i32>) -> impl IntoResponse {
         .select(UserProfile::as_select())
         .get_result(conn);
 
-    if let Ok(door) = user {
-        Ok((StatusCode::OK, Json(door)))
+    if let Ok(user) = user {
+        Ok((StatusCode::OK, Json(user)))
     } else {
         let error_response = json!({ "message": format!("User with ID: {} not found.", user_id) });
         Err((StatusCode::NOT_FOUND, Json(error_response)))
