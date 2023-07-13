@@ -1,6 +1,16 @@
 services:
   server:
+<<<<<<< HEAD
     build:
       context: .
     ports:
       - "3000:3000"
+=======
+    build: .
+    image: esp-door-server
+
+networks:
+  default:
+    name: nginx-network
+    external: true
+>>>>>>> 8d88874732518e89994044ad3c6e677fb6a6cd16
