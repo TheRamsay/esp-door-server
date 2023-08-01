@@ -18,6 +18,7 @@ use crate::schema::door;
 use crate::schema::door_code;
 use crate::schema::door_permission;
 use crate::schema::user_profile;
+use crate::schema::access_history;
 use crate::COOKIE_NAME;
 
 #[derive(Queryable, Selectable, Identifiable, Insertable, Serialize, Deserialize, Debug, Clone)]
@@ -40,7 +41,9 @@ pub struct Door {
     pub owner_id: Option<i32>,
 }
 
-#[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
+#[derive(
+    Queryable, Selectable, Identifiable, Associations, Debug, PartialEq, Serialize, Deserialize,
+)]
 #[diesel(table_name = door_permission)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(UserProfile))]
@@ -75,4 +78,25 @@ pub struct DoorCode {
     pub expires_at: Option<NaiveDateTime>,
     pub creator_id: i32,
     pub used: bool,
+}
+
+#[derive(
+    Queryable,
+    Selectable,
+    Identifiable,
+    Debug,
+    PartialEq,
+    AsChangeset,
+    Serialize,
+    Deserialize,
+    Clone,
+    Insertable,
+)]
+#[diesel(table_name = access_history)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct AccessHistory {
+    pub id: i32,
+    pub door_id: i32,
+    pub user_profile_id: i32,
+    pub access_timestamp: NaiveDateTime,
 }

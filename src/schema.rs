@@ -1,6 +1,15 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    access_history (id) {
+        id -> Int4,
+        door_id -> Int4,
+        user_profile_id -> Int4,
+        access_timestamp -> Timestamptz,
+    }
+}
+
+diesel::table! {
     door (id) {
         id -> Int4,
         about -> Nullable<Varchar>,
@@ -38,6 +47,8 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(access_history -> door (door_id));
+diesel::joinable!(access_history -> user_profile (user_profile_id));
 diesel::joinable!(door -> user_profile (owner_id));
 diesel::joinable!(door_code -> door (door_id));
 diesel::joinable!(door_code -> user_profile (creator_id));
@@ -45,6 +56,7 @@ diesel::joinable!(door_permission -> door (door_id));
 diesel::joinable!(door_permission -> user_profile (user_profile_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    access_history,
     door,
     door_code,
     door_permission,

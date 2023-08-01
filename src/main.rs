@@ -29,6 +29,8 @@ use routes::auth::AuthRedirect;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::HashMap, env, net::SocketAddr};
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
 use tracing_subscriber::{fmt::layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
@@ -69,19 +71,25 @@ async fn main() {
         .allow_headers([CONTENT_TYPE])
         .allow_credentials(true);
 
-    let app = Router::new().nest(
-        "/api/v1",
-        Router::new()
-            .nest("", routes::general::create_router(app_state.clone()))
-            .nest("/doors", routes::door::create_router(app_state.clone()))
-            .nest("/users", routes::user::create_router(app_state.clone()))
-            .nest("/auth", routes::auth::create_router(app_state.clone()))
-            .nest("/ws", routes::websocket::create_router(app_state.clone()))
-            .layer(cors),
-    );
+    let app = Router::new()
+        .nest(
+            "/api/v1",
+            Router::new()
+                .nest("", routes::general::create_router(app_state.clone()))
+                .nest("/doors", routes::door::create_router(app_state.clone()))
+                .nest("/users", routes::user::create_router(app_state.clone()))
+                .nest("/auth", routes::auth::create_router(app_state.clone()))
+                .nest("/ws", routes::websocket::create_router(app_state.clone()))
+                .layer(cors),
+        )
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+        );
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-    // axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())
+        // axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();

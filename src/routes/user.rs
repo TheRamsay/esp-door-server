@@ -3,7 +3,10 @@ use crate::{
     models::DoorCode,
     models::UserProfile,
     models::{Door, DoorPermission},
-    schema::{door, door_code, door_permission, user_profile},
+    schema::{
+        door::{self, owner_id},
+        door_code, door_permission, user_profile,
+    },
     AppState,
 };
 use async_session::MemoryStore;
@@ -17,6 +20,7 @@ use diesel::{insert_into, prelude::*};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use http::StatusCode;
 use serde::Deserialize;
+use serde::Serialize;
 use serde_json::json;
 
 pub fn create_router(app_state: AppState) -> Router {
@@ -81,21 +85,30 @@ async fn create_user(Json(body): Json<UserProfile>) -> impl IntoResponse {
 async fn get_user_doors(Path(user_id): Path<i32>) -> impl IntoResponse {
     let conn = &mut establish_connection();
 
-    let user = user_profile::table
-        .find(user_id)
-        .select(UserProfile::as_select())
-        .get_result(conn);
+    #[derive(Serialize)]
+    struct DoorWithOwner {
+        #[serde(flatten)]
+        door: Door,
+        owner: UserProfile,
+    }
 
-    if let Ok(user) = user {
-        let doors = DoorPermission::belonging_to(&user)
-            .inner_join(door::table)
-            .select(Door::as_select())
-            .load(conn)
-            .unwrap();
+    let doors = door::table
+        .filter(door::owner_id.eq(user_id))
+        .inner_join(user_profile::table)
+        .select((Door::as_select(), UserProfile::as_select()))
+        .load::<(Door, UserProfile)>(conn);
 
-        Ok((StatusCode::OK, Json(doors)))
-    } else {
-        let error_response = json!({ "message": format!("User with ID: {} not found.", user_id) });
-        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    match doors {
+        Ok(doors) => {
+            let data = doors
+                .into_iter()
+                .map(|(door, owner)| DoorWithOwner { owner, door })
+                .collect::<Vec<DoorWithOwner>>();
+            Ok((StatusCode::OK, Json(data)))
+        }
+        Err(e) => {
+            let error_response = json!({ "error": format!("{e}") });
+            Err((StatusCode::NOT_FOUND, Json(error_response)))
+        }
     }
 }

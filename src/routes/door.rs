@@ -17,7 +17,9 @@ use diesel::{insert_into, prelude::*};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use http::StatusCode;
 use serde::Deserialize;
+use serde::Serialize;
 use serde_json::json;
+use tracing_subscriber::filter;
 
 pub fn create_router(app_state: AppState) -> Router {
     Router::new()
@@ -25,6 +27,12 @@ pub fn create_router(app_state: AppState) -> Router {
         .route("/:id", get(get_door))
         .route("/:id/open", get(open_door))
         .route("/:id/permissions", get(get_door_permission))
+        .route("/:id/permissions/:user_id", get(get_user_door_permission))
+        .route("/:id/access_history", get(get_door_access_history))
+        .route(
+            "/:id/access_history/:user_id",
+            get(door_access_history_by_user),
+        )
         .with_state(app_state)
 }
 
@@ -47,19 +55,85 @@ async fn get_door(Path(door_id): Path<i32>) -> impl IntoResponse {
 async fn get_door_permission(Path(door_id): Path<i32>) -> impl IntoResponse {
     let conn = &mut establish_connection();
 
-    let door = door::table
-        .find(door_id)
-        .select(Door::as_select())
-        .get_result(conn);
+    #[derive(Serialize)]
+    struct PermissionWithUserAndDoor {
+        #[serde(flatten)]
+        permission: DoorPermission,
+        user_profile: UserProfile,
+        door: Door,
+    }
+    let permissions = door_permission::table
+        .filter(door_permission::door_id.eq(door_id))
+        .inner_join(user_profile::table)
+        .inner_join(door::table)
+        .select((
+            DoorPermission::as_select(),
+            UserProfile::as_select(),
+            Door::as_select(),
+        ))
+        .load::<(DoorPermission, UserProfile, Door)>(conn);
 
-    if let Ok(door) = door {
-        let permissions = DoorPermission::belonging_to(&door)
-            .inner_join(user_profile::table)
-            .select(DoorPermission::as_select())
-            .load(conn);
-    } else {
-        let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
-        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    if let Err(e) = permissions {
+        let error_response = json!({ "error": format!("{e}") });
+        return Err((StatusCode::NOT_FOUND, Json(error_response)));
+    }
+
+    match permissions {
+        Ok(permissions) => {
+            let data = permissions
+                .into_iter()
+                .map(
+                    |(permission, user_profile, door)| PermissionWithUserAndDoor {
+                        permission,
+                        user_profile,
+                        door,
+                    },
+                )
+                .collect::<Vec<PermissionWithUserAndDoor>>();
+            Ok((StatusCode::OK, Json(data)))
+        }
+        Err(e) => {
+            let error_response = json!({ "error": format!("{e}") });
+            Err((StatusCode::NOT_FOUND, Json(error_response)))
+        }
+    }
+}
+
+async fn get_user_door_permission(Path((door_id, user_id)): Path<(i32, i32)>) -> impl IntoResponse {
+    let conn = &mut establish_connection();
+
+    #[derive(Serialize)]
+    struct PermissionWithUserAndDoor {
+        #[serde(flatten)]
+        permission: DoorPermission,
+        user_profile: UserProfile,
+        door: Door,
+    }
+    let permission = door_permission::table
+        .filter(door_permission::door_id.eq(door_id))
+        .filter(door_permission::user_profile_id.eq(user_id))
+        .inner_join(user_profile::table)
+        .inner_join(door::table)
+        .select((
+            DoorPermission::as_select(),
+            UserProfile::as_select(),
+            Door::as_select(),
+        ))
+        .get_result::<(DoorPermission, UserProfile, Door)>(conn);
+
+    match permission {
+        Ok(permission) => {
+            let data = PermissionWithUserAndDoor {
+                permission: permission.0,
+                user_profile: permission.1,
+                door: permission.2,
+            };
+            Ok((StatusCode::OK, Json(data)))
+        }
+        Err(e) => {
+            let error_response = json!({ "error": format!("{e}") });
+            Err((StatusCode::NOT_FOUND, Json(error_response)))
+        }
     }
 }
 
@@ -124,4 +198,36 @@ async fn open_door(
         StatusCode::UNAUTHORIZED,
         Json("You are not allowed to open doors"),
     ));
+}
+
+async fn get_door_access_history(Path(door_id): Path<i32>) -> impl IntoResponse {
+    let conn = &mut establish_connection();
+
+    let door = door::table
+        .find(door_id)
+        .select(Door::as_select())
+        .get_result(conn);
+
+    if let Ok(door) = door {
+        Ok((StatusCode::OK, Json(door)))
+    } else {
+        let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
+        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    }
+}
+
+async fn get_door_access_history_by_user(Path(door_id): Path<i32>) -> impl IntoResponse {
+    let conn = &mut establish_connection();
+
+    let door = door::table
+        .find(door_id)
+        .select(Door::as_select())
+        .get_result(conn);
+
+    if let Ok(door) = door {
+        Ok((StatusCode::OK, Json(door)))
+    } else {
+        let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
+        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    }
 }

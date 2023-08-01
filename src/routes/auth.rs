@@ -6,8 +6,8 @@ use axum::{
     routing::get,
     RequestPartsExt, Router, TypedHeader,
 };
-use diesel::{ExpressionMethods, SelectableHelper, QueryDsl};
 use diesel::{insert_into, prelude::*};
+use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use http::{
     header::{self, SET_COOKIE},
     request::Parts,
@@ -20,9 +20,13 @@ use oauth2::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    db::establish_connection,
     models::UserProfile,
-    schema::{door, door_code, door_permission, user_profile::{self, discord_id}},
-    AppState, COOKIE_NAME, db::establish_connection,
+    schema::{
+        door, door_code, door_permission,
+        user_profile::{self, discord_id},
+    },
+    AppState, COOKIE_NAME,
 };
 
 pub fn create_router(app_state: AppState) -> Router {
@@ -82,33 +86,35 @@ async fn login_authorized(
         .limit(1)
         .load(conn);
 
+    let users: Vec<UserProfile> = user_res.unwrap();
     let user: UserProfile;
 
-    if let Err(_) = user_res {
-        user = UserProfile{
-            id: 0, username: discord_data.username.clone(), 
-            discord_id: discord_data.id.clone(), 
-            avatar: discord_data.avatar.clone()
+    if users.len() == 0 {
+        user = UserProfile {
+            id: 0,
+            username: discord_data.username.clone(),
+            discord_id: discord_data.id.clone(),
+            avatar: discord_data.avatar.clone(),
         };
 
         insert_into(user_profile::table)
             .values(user.clone())
-            .execute(conn);
+            .execute(conn)
+            .unwrap();
     } else {
-        user = user_res.unwrap()[0].clone();
+        user = users[0].clone();
     }
-
-    // Create a new session filled with user data
+    // // Create a new session filled with user data
     let mut session = Session::new();
     session.insert("user", &user).unwrap();
 
-    // Store session and get corresponding cookie
+    // // Store session and get corresponding cookie
     let cookie = store.store_session(session).await.unwrap().unwrap();
 
-    // Build the cookie
+    // // Build the cookie
     let cookie = format!("{}={}; SameSite=Lax; Path=/", COOKIE_NAME, cookie);
 
-    // Set cookie
+    // // Set cookie
     let mut headers = HeaderMap::new();
     headers.insert(SET_COOKIE, cookie.parse().unwrap());
 
@@ -158,7 +164,6 @@ where
                     _ => panic!("unexpected error getting cookies: {}", e),
                 })?;
 
-            
         let session_cookie = cookies.get(COOKIE_NAME).ok_or(AuthRedirect)?;
 
         let session = store
