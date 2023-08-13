@@ -1,12 +1,19 @@
 use crate::{
     db::establish_connection,
     models::DoorCode,
+    models::InsertedDoor,
     models::UserProfile,
-    models::{Door, DoorPermission},
-    schema::{door, door_code, door_permission, user_profile},
+    models::{AccessHistory, Door, DoorPermission},
+    schema::{
+        access_history::{self, access_timestamp, user_profile_id},
+        door, door_code, door_permission, user_profile,
+    },
     AppState,
 };
-use async_session::MemoryStore;
+use async_session::{
+    chrono::{NaiveDateTime, Utc},
+    MemoryStore,
+};
 use axum::{
     extract::{FromRef, Path, Query},
     response::{IntoResponse, Redirect},
@@ -31,7 +38,7 @@ pub fn create_router(app_state: AppState) -> Router {
         .route("/:id/access_history", get(get_door_access_history))
         .route(
             "/:id/access_history/:user_id",
-            get(door_access_history_by_user),
+            get(get_door_access_history_by_user),
         )
         .with_state(app_state)
 }
@@ -137,7 +144,7 @@ async fn get_user_door_permission(Path((door_id, user_id)): Path<(i32, i32)>) ->
     }
 }
 
-async fn create_door(Json(body): Json<Door>) -> impl IntoResponse {
+async fn create_door(Json(body): Json<InsertedDoor>) -> impl IntoResponse {
     let conn = &mut establish_connection();
 
     match insert_into(door::table).values(body.clone()).execute(conn) {
@@ -185,6 +192,12 @@ async fn open_door(
             .get_result(conn);
 
         if let Ok(_) = results {
+            let _ = insert_into(access_history::table).values((
+                user_profile_id.eq(user.id),
+                access_timestamp.eq(Utc::now().naive_utc()),
+                access_history::door_id.eq(door_id),
+            ));
+
             return Ok((StatusCode::OK, Json("door opened")));
         } else {
             return Err((
@@ -203,31 +216,40 @@ async fn open_door(
 async fn get_door_access_history(Path(door_id): Path<i32>) -> impl IntoResponse {
     let conn = &mut establish_connection();
 
-    let door = door::table
-        .find(door_id)
-        .select(Door::as_select())
-        .get_result(conn);
+    let access_history = access_history::table
+        .filter(access_history::door_id.eq(door_id))
+        .select(AccessHistory::as_select())
+        .load(conn);
 
-    if let Ok(door) = door {
-        Ok((StatusCode::OK, Json(door)))
-    } else {
-        let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
-        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    match access_history {
+        Ok(access_history) => Ok((StatusCode::OK, Json(access_history))),
+        Err(e) => {
+            let error_response = json!({ "error": format!("{e}") });
+            Err((StatusCode::NOT_FOUND, Json(error_response)))
+        }
     }
 }
 
-async fn get_door_access_history_by_user(Path(door_id): Path<i32>) -> impl IntoResponse {
+async fn get_door_access_history_by_user(
+    Path(door_id): Path<i32>,
+    user_profile: UserProfile,
+) -> impl IntoResponse {
     let conn = &mut establish_connection();
 
-    let door = door::table
-        .find(door_id)
-        .select(Door::as_select())
-        .get_result(conn);
+    let access_history = access_history::table
+        .filter(
+            access_history::door_id
+                .eq(door_id)
+                .and(access_history::user_profile_id.eq(user_profile.id)),
+        )
+        .select(AccessHistory::as_select())
+        .load(conn);
 
-    if let Ok(door) = door {
-        Ok((StatusCode::OK, Json(door)))
-    } else {
-        let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
-        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    match access_history {
+        Ok(access_history) => Ok((StatusCode::OK, Json(access_history))),
+        Err(e) => {
+            let error_response = json!({ "error": format!("{e}") });
+            Err((StatusCode::NOT_FOUND, Json(error_response)))
+        }
     }
 }

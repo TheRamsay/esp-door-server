@@ -14,11 +14,11 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::routes::auth::AuthRedirect;
+use crate::schema::access_history;
 use crate::schema::door;
 use crate::schema::door_code;
 use crate::schema::door_permission;
 use crate::schema::user_profile;
-use crate::schema::access_history;
 use crate::COOKIE_NAME;
 
 #[derive(Queryable, Selectable, Identifiable, Insertable, Serialize, Deserialize, Debug, Clone)]
@@ -31,12 +31,21 @@ pub struct UserProfile {
     pub avatar: Option<String>,
 }
 
-#[derive(Queryable, Selectable, Serialize, Deserialize, Insertable, Clone)]
+#[derive(Queryable, Selectable, Serialize, Deserialize, Clone)]
 #[diesel(table_name = door)]
 #[diesel(belongs_to(DoorPermission))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Door {
     pub id: i32,
+    pub about: Option<String>,
+    pub owner_id: Option<i32>,
+}
+
+#[derive(Serialize, Deserialize, Insertable, Clone)]
+#[diesel(table_name = door)]
+#[diesel(belongs_to(DoorPermission))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct InsertedDoor {
     pub about: Option<String>,
     pub owner_id: Option<i32>,
 }

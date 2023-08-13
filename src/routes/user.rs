@@ -13,13 +13,12 @@ use async_session::MemoryStore;
 use axum::{
     extract::{FromRef, Path, Query},
     response::{IntoResponse, Redirect},
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use diesel::{insert_into, prelude::*};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use http::StatusCode;
-use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
 
