@@ -19,7 +19,7 @@ use futures::{sink::SinkExt, stream::StreamExt};
 use http::{
     header::{self, CONTENT_TYPE},
     request::Parts,
-    HeaderValue,
+    HeaderValue, Method,
 };
 use oauth2::{
     basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
@@ -28,7 +28,7 @@ use oauth2::{
 use routes::auth::AuthRedirect;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::HashMap, env, net::SocketAddr};
-use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::cors::{AllowMethods, AllowOrigin, Any, CorsLayer};
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 use tracing_subscriber::{fmt::layer, layer::SubscriberExt, util::SubscriberInitExt};
@@ -69,6 +69,7 @@ async fn main() {
         .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
         // .allow_origin("https://pelise.theramsay.dev".parse::<HeaderValue>().unwrap())
         .allow_headers([CONTENT_TYPE])
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
         .allow_credentials(true);
 
     let app = Router::new()

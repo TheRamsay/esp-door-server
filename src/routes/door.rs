@@ -20,7 +20,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use diesel::{insert_into, prelude::*};
+use diesel::{delete, insert_into, prelude::*};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use http::StatusCode;
 use serde::Deserialize;
@@ -31,14 +31,17 @@ use tracing_subscriber::filter;
 pub fn create_router(app_state: AppState) -> Router {
     Router::new()
         .route("/", post(create_door))
-        .route("/:id", get(get_door))
+        .route("/:id", get(get_door).delete(delete_door))
         .route("/:id/open", get(open_door))
         .route("/:id/permissions", get(get_door_permission))
-        .route("/:id/permissions/:user_id", get(get_user_door_permission))
+        .route(
+            "/:id/permissions/:user_id",
+            get(get_user_door_permission).delete(delete_user_access),
+        )
         .route("/:id/access_history", get(get_door_access_history))
         .route(
             "/:id/access_history/:user_id",
-            get(get_door_access_history_by_user),
+            get(get_user_access_history),
         )
         .with_state(app_state)
 }
@@ -55,6 +58,23 @@ async fn get_door(Path(door_id): Path<i32>) -> impl IntoResponse {
         Ok((StatusCode::OK, Json(door)))
     } else {
         let error_response = json!({ "message": format!("Doors with ID: {} not found.", door_id) });
+        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    }
+}
+
+async fn delete_door(Path(door_id): Path<i32>) -> impl IntoResponse {
+    let conn = &mut establish_connection();
+
+    let deleted = delete(door::table.find(door_id)).execute(conn);
+
+    if let Ok(n) = deleted {
+        Ok((
+            StatusCode::OK,
+            Json(json!(format!("Door with an ID {door_id} was deleted."))),
+        ))
+    } else {
+        let error_response =
+            json!({ "message": format!("Doors with ID {door_id} could not be deleted.") });
         Err((StatusCode::NOT_FOUND, Json(error_response)))
     }
 }
@@ -144,6 +164,33 @@ async fn get_user_door_permission(Path((door_id, user_id)): Path<(i32, i32)>) ->
     }
 }
 
+async fn delete_user_access(Path((door_id, user_id)): Path<(i32, i32)>) -> impl IntoResponse {
+    let conn = &mut establish_connection();
+
+    let deleted = delete(
+        door_permission::table.filter(
+            door_permission::door_id
+                .eq(door_id)
+                .and(door_permission::user_profile_id.eq(user_id)),
+        ),
+    )
+    .execute(conn);
+
+    if let Ok(n) = deleted {
+        Ok((
+            StatusCode::OK,
+            Json(json!(format!(
+                "Door permission with an ID ({door_id}, {user_id}) was deleted."
+            ))),
+        ))
+    } else {
+        let error_response = json!({
+            "message": format!("Doors with ID ({door_id}, {user_id}) could not be deleted.")
+        });
+        Err((StatusCode::NOT_FOUND, Json(error_response)))
+    }
+}
+
 async fn create_door(Json(body): Json<InsertedDoor>) -> impl IntoResponse {
     let conn = &mut establish_connection();
 
@@ -230,7 +277,7 @@ async fn get_door_access_history(Path(door_id): Path<i32>) -> impl IntoResponse 
     }
 }
 
-async fn get_door_access_history_by_user(
+async fn get_user_access_history(
     Path(door_id): Path<i32>,
     user_profile: UserProfile,
 ) -> impl IntoResponse {
