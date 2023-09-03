@@ -12,6 +12,7 @@ use axum::{
     routing::get,
     RequestPartsExt, Router, TypedHeader,
 };
+
 use diesel::{associations::HasTable, prelude::*};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenv::dotenv;

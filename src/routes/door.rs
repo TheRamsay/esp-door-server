@@ -1,7 +1,7 @@
 use crate::{
     db::establish_connection,
     models::DoorCode,
-    models::InsertedDoor,
+    models::{InsertedDoor},
     models::UserProfile,
     models::{AccessHistory, Door, DoorPermission},
     schema::{
@@ -33,16 +33,16 @@ pub fn create_router(app_state: AppState) -> Router {
         .route("/", post(create_door))
         .route("/:id", get(get_door).delete(delete_door))
         .route("/:id/open", get(open_door))
-        .route("/:id/permissions", get(get_door_permission))
+        .route(
+            "/:id/permissions",
+            get(get_door_permission).post(create_door_permission),
+        )
         .route(
             "/:id/permissions/:user_id",
             get(get_user_door_permission).delete(delete_user_access),
         )
         .route("/:id/access_history", get(get_door_access_history))
-        .route(
-            "/:id/access_history/:user_id",
-            get(get_user_access_history),
-        )
+        .route("/:id/access_history/:user_id", get(get_user_access_history))
         .with_state(app_state)
 }
 
@@ -197,6 +197,15 @@ async fn create_door(Json(body): Json<InsertedDoor>) -> impl IntoResponse {
     match insert_into(door::table).values(body.clone()).execute(conn) {
         Ok(_) => Ok((StatusCode::CREATED, Json(body))),
         Err(e) => Err((StatusCode::BAD_REQUEST, Json(e.to_string()))),
+    }
+}
+
+async fn create_door_permission(Json(body): Json<DoorPermission>) -> impl IntoResponse {
+    let conn = &mut establish_connection();
+
+    match insert_into(door_permission::table).values(body.clone()).execute(conn) {
+        Ok(_) => Ok((StatusCode::CREATED, Json(body))),
+        Err(e) => Err((StatusCode::BAD_REQUEST, Json(json!(e.to_string())))),
     }
 }
 

@@ -51,7 +51,16 @@ pub struct InsertedDoor {
 }
 
 #[derive(
-    Queryable, Selectable, Identifiable, Associations, Debug, PartialEq, Serialize, Deserialize,
+    Queryable,
+    Selectable,
+    Identifiable,
+    Insertable,
+    Associations,
+    Debug,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Clone,
 )]
 #[diesel(table_name = door_permission)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
